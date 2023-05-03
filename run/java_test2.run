@@ -12,9 +12,6 @@ import_from_depot [depot_user]/src/[base_src] \
                   [depot_user]/src/init \
                   [depot_user]/src/posix \
                   [depot_user]/src/ncurses \
-                  [depot_user]/src/bash \
-                  [depot_user]/src/vim \
-                  [depot_user]/src/coreutils \
                   [depot_user]/src/vfs \
                   [depot_user]/src/vfs_pipe \
                   [depot_user]/src/nitpicker \
@@ -34,7 +31,10 @@ set viminfo=}
 close $vimrc_fd
 
 install_config {
+
+
 <config verbose="yes">
+	
 	<parent-provides>
 		<service name="ROM"/>
 		<service name="LOG"/>
@@ -93,11 +93,12 @@ install_config {
 			<any-service> <parent/> <any-child/> </any-service>
 		</route>
 	</start>
+
 <!--
 	<start name="test-terminal_echo">
 			<resource name="RAM" quantum="1M"/>
 	</start>	
--->
+
 	<start name="vfs" caps="120">
 		<resource name="RAM" quantum="30M"/>
 		<provides><service name="File_system"/></provides>
@@ -133,7 +134,7 @@ install_config {
 		</route>
 	</start>
 
-	
+	-->
 	<start name="java" caps="500">
 		<resource name="RAM" quantum="96M" />
 		<route>
@@ -154,8 +155,9 @@ install_config {
 			<!-- <arg value="-Xcomp"/> -->
 			<!-- <arg value="-XX:+PrintCompilation" /> -->
 			<arg value="-jar" />
-			<arg value="hello_arm.jar" />
-			<libc stdin="/dev/terminal" stdout="/dev/terminal" stderr="/dev/log" rtc="/dev/rtc" />
+			<arg value="hello.jar" />
+			<!--<libc stdin="/dev/log" stdout="/dev/log" stderr="/dev/log" rtc="/dev/rtc" /> -->
+			<libc stdin="/dev/terminal" stdout="/dev/terminal" stderr="/dev/terminal" rtc="/dev/rtc" />
 			<vfs rtc="/dev/rtc">
 				<dir name="dev">
 					<log/><null/><inline name="rtc">2000-01-01 00:00</inline>
@@ -175,9 +177,32 @@ install_config {
 					<tar name="classes.tar" />
 				</dir>
 				<tar name="hello_arm.tar" />
+				<tar name="hello.tar" />
 				<rom name="zip.lib.so" />
 				<rom name="nio.lib.so" />
 				<rom name="net.lib.so" />
+
+					<rom label="classes.tar"/>
+					<rom label="hello.tar"/>
+					<rom label="java"/>
+					<rom label="java.lib.so"/>
+					<rom label="jimage.lib.so"/>
+					<rom label="jli.lib.so"/>
+					<rom label="jnet.lib.so"/>
+					<rom label="jvm.lib.so"/>
+					<rom label="jzip.lib.so"/>
+					<rom label="libc.lib.so"/>
+					<rom label="libm.lib.so"/>
+					<rom label="vfs_pipe.lib.so"/>
+					<rom label="ld.lib.so"/>
+					<rom label="management.lib.so"/>
+					<rom label="nio.lib.so"/>
+					<rom label="stdcxx.lib.so"/>
+					<rom label="vfs.lib.so"/>
+					<rom label="tzdb.dat"/>
+					<rom label="zlib.lib.so"/>
+				
+
 			</vfs>
 			<env key="TERM" value="screen"/>
 			<env key="PATH" value="/bin" />

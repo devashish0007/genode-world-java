@@ -1,0 +1,164 @@
+create_boot_directory
+
+if {![have_spec arm_v7]} {
+	puts "Java is not supported on this platform. Valid platforms is arm_v7a."
+	exit 0
+}
+
+import_from_depot [depot_user]/src/[base_src] \
+                  [depot_user]/pkg/[drivers_interactive_pkg] \
+                  [depot_user]/pkg/terminal \
+                  [depot_user]/src/init \
+                  [depot_user]/src/vfs \
+                  [depot_user]/src/nitpicker \
+                  [depot_user]/pkg/jdk 
+                  
+
+install_config {
+<config verbose="yes">
+  <parent-provides>
+	<service name="ROM"/>
+	<service name="LOG"/>
+	<service name="RM"/>
+	<service name="CPU"/>
+	<service name="PD"/>
+	<service name="IRQ"/>
+	<service name="IO_PORT"/>
+	<service name="IO_MEM"/>
+  </parent-provides>
+
+  <default-route>
+	<any-service> <parent/> <any-child/> </any-service>
+  </default-route>
+
+  <default caps="100"/>
+
+  <start name="timer">
+	<resource name="RAM" quantum="1M"/>
+	<provides><service name="Timer"/></provides>
+  </start>
+
+  <start name="drivers" caps="1500" managing_system="yes">
+	<resource name="RAM" quantum="64M"/>
+	<binary name="init"/>
+	<route>
+	 <service name="ROM" label="config"> <parent label="drivers.config"/> </service>
+	 <service name="Timer">   <child name="timer"/> </service>
+	 <service name="Capture"> <child name="nitpicker"/> </service>
+	 <service name="Event">   <child name="nitpicker"/> </service>
+  	 <any-service> <parent/> </any-service>
+	</route>
+  </start>
+
+  <start name="nitpicker">
+   <resource name="RAM" quantum="4M"/>
+    <provides>
+	 <service name="Gui"/> <service name="Capture"/> <service name="Event"/>
+    </provides>
+   <config focus="rom">
+	<capture/> <event/>
+	<domain name="default" layer="2" content="client" label="no" hover="always"/>
+	<default-policy domain="default"/>
+   </config>
+   <route>
+	<any-service> <parent/> <any-child/> </any-service>
+   </route>
+  </start>
+
+  <start name="terminal" caps="110">
+   <resource name="RAM" quantum="6M"/>
+   <provides><service name="Terminal"/></provides>
+   <route>
+	<service name="ROM" label="config"> <parent label="terminal.config"/> </service>
+	<service name="Gui"> <child name="nitpicker"/> </service>
+	<any-service> <parent/> <any-child/> </any-service>
+   </route>
+  </start>
+
+  <start name="java" caps="500">
+	<resource name="RAM" quantum="96M" />
+	<route>
+	 <service name="ROM" label="zip.lib.so">
+	  <parent label="jzip.lib.so" />
+	 </service>
+	 <service name="ROM" label="net.lib.so">
+	  <parent label="jnet.lib.so" />
+	 </service>
+	 <any-service> <parent/> <any-child/> </any-service>
+	</route>
+	<config ld_verbose="yes">
+	 <arg value="/bin/java" />
+	 <arg value="-XX:+NeverActAsServerClassMachine"/>
+	 <arg value="-XX:+UnlockDiagnosticVMOptions"/>
+	 <arg value="-XX:-ImplicitNullChecks"/>
+	 <arg value="-XX:+CITime" />
+	 <!-- <arg value="-Xcomp"/> -->
+	 <!-- <arg value="-XX:+PrintCompilation" /> -->
+	 <arg value="-jar" />
+	 <arg value="blockchain.jar" />
+	 <libc stdin="/dev/terminal" stdout="/dev/terminal" stderr="/dev/log" rtc="/dev/rtc" />
+	 <vfs rtc="/dev/rtc">
+	   <dir name="dev">
+		<log/><null/><inline name="rtc">2000-01-01 00:00</inline>
+		<terminal label="terminal"/>
+	   </dir>
+	   <dir name="bin">
+		<rom name="java" />
+	   </dir>
+	   <dir name="lib">
+		<rom name="java.lib.so" />
+		<inline name="jvm.cfg">-server KNOWN -client IGNORE </inline>
+		<dir name="server">
+			<rom name="jvm.lib.so" />
+		</dir>
+	   </dir>
+	   <dir name="modules">
+		<tar name="classes.tar" />
+	   </dir>
+	   <tar name="hello.tar" />
+	   <tar name="fibonacci.tar" />
+	   <tar name="md5.tar" />
+	   <tar name="sha256.tar" />
+	   <tar name="sha512.tar" />
+	   <tar name="aes.tar" />
+	   <tar name="digitalsignature.tar" />
+	   <tar name="digitalsignature_fail.tar" />
+	   <tar name="blockchain.tar" />
+	   <rom name="zip.lib.so" />
+	   <rom name="nio.lib.so" />
+	   <rom name="net.lib.so" />
+
+
+	    <dir name="conf">
+		    <dir name="security">
+		      	<dir name="policy">
+		        	<dir name="unlimited">
+		          		<inline name="default_local.policy">
+						  grant {
+						    // There is no restriction to any algorithms.
+						   permission javax.crypto.CryptoAllPermission;
+						  };
+		 				</inline>
+		       		</dir>
+		     	</dir>
+		   	</dir>
+		 </dir>
+
+	 </vfs>
+	 <env key="TERM" value="screen"/>
+	 <env key="PATH" value="/bin" />
+	</config>
+  </start>
+	
+</config>}
+
+set fd [open [run_dir]/genode/focus w]
+puts $fd "<focus label=\"terminal -> \" domain=\"default\"/>"
+close $fd
+
+build { lib/ld test/fork test/execve }
+
+build_boot_image { ld.lib.so libc.lib.so libm.lib.so vfs.lib.so posix.lib.so terminal }
+
+run_genode_until "child \"java\" exited with exit value 0" 20000
+ 

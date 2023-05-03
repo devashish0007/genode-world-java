@@ -4,3 +4,4 @@ _/src/libc
 _/src/stdcxx
 _/src/vfs
 _/src/zlib
+_/src/terminal
